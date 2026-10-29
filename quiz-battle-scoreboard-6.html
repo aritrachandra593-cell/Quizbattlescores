@@ -2102,14 +2102,25 @@ window.QB_FOLLOW_DATA = ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wB
     }, err => console.error('history sync', err));
   }
 
+  // a brand-new container every time: reCAPTCHA refuses to render twice in the same element
+  function dropRecaptchaBox(){
+    const old = document.getElementById('recaptchaBox');
+    if(old && old.parentNode) old.parentNode.removeChild(old);
+  }
   function getRecaptcha(){
-    if(!recaptcha) recaptcha = new firebase.auth.RecaptchaVerifier('recaptchaBox', { size:'invisible' });
+    if(!recaptcha){
+      dropRecaptchaBox();
+      const box = document.createElement('div');
+      box.id = 'recaptchaBox';
+      document.body.appendChild(box);
+      recaptcha = new firebase.auth.RecaptchaVerifier(box, { size:'invisible' });
+    }
     return recaptcha;
   }
   function resetRecaptcha(){
     try{ if(recaptcha) recaptcha.clear(); }catch(e){}
     recaptcha = null;
-    document.getElementById('recaptchaBox').innerHTML = '';
+    dropRecaptchaBox();
   }
   function authError(e){
     const c = (e && e.code) || '';
