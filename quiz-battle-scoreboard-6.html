@@ -1369,42 +1369,21 @@
 
 <div class="acct-overlay acct-hide" id="acctModal">
   <div class="acct-card">
-    <div id="acctStepPhone">
-      <h3>Login with phone</h3>
-      <p>Phone number diye login korle apnar shob past quiz jekono device-e dekhte pabenn.</p>
-      <div class="acct-row">
-        <select id="acctCode" aria-label="Country code">
-          <option value="+91">🇮🇳 +91</option>
-          <option value="+880">🇧🇩 +880</option>
-          <option value="+977">🇳🇵 +977</option>
-          <option value="+94">🇱🇰 +94</option>
-          <option value="+971">🇦🇪 +971</option>
-          <option value="+966">🇸🇦 +966</option>
-          <option value="+44">🇬🇧 +44</option>
-          <option value="+1">🇺🇸 +1</option>
-        </select>
-        <input type="tel" id="acctPhone" inputmode="numeric" autocomplete="tel-national" placeholder="Phone number">
-      </div>
-      <button type="button" class="acct-go" id="acctSend">Send OTP</button>
-    </div>
-    <div id="acctStepOtp" class="acct-hide">
-      <h3>Enter OTP</h3>
-      <p id="acctOtpInfo">6-digit code pathano hoyeche.</p>
-      <div class="acct-row"><input type="text" class="otp" id="acctOtp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••"></div>
-      <button type="button" class="acct-go" id="acctVerify">Verify &amp; Login</button>
-      <button type="button" class="acct-link" id="acctChange">← Change number</button>
+    <div id="acctStepLogin">
+      <h3>Login</h3>
+      <p>Google account diye login korle apnar shob past quiz jekono device-e dekhte pabenn.</p>
+      <button type="button" class="acct-go" id="acctGoogle">Continue with Google</button>
     </div>
     <div id="acctStepIn" class="acct-hide">
       <h3>Logged in</h3>
       <div class="acct-phone" id="acctWho"></div>
-      <p>Ei number-er shob quiz history cloud-e save hobe. Onno device-e ei number diye login korlei dekhte pabenn.</p>
+      <p>Ei account-er shob quiz history cloud-e save hobe. Onno device-e ei Google account diye login korlei dekhte pabenn.</p>
       <button type="button" class="acct-go" id="acctLogout">Logout</button>
     </div>
     <div class="acct-msg" id="acctMsg"></div>
     <button type="button" class="acct-close" id="acctClose">Close</button>
   </div>
 </div>
-<div id="recaptchaBox"></div>
 
 <script id="qbFollowData">
 // Pictures shown when the logo is clicked on the final screen
@@ -2007,7 +1986,7 @@ window.QB_FOLLOW_DATA = ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wB
     }
   });
 
-  // ---------- PHONE OTP LOGIN + CLOUD HISTORY (Firebase) ----------
+  // ---------- GOOGLE LOGIN + CLOUD HISTORY (Firebase) ----------
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyCXMmW7SRY6Clq2nLAlz5n3_UbRn3Hruzk",
     authDomain: "quizbattlescores.firebaseapp.com",
@@ -2016,32 +1995,30 @@ window.QB_FOLLOW_DATA = ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wB
     messagingSenderId: "289191965353",
     appId: "1:289191965353:web:c8d5ea37782887b165efb8"
   };
-  let fbAuth = null, fbDb = null, unsubHist = null, otpConfirm = null, recaptcha = null;
+  let fbAuth = null, fbDb = null, unsubHist = null;
 
   const acctBar = document.getElementById('acctBar');
   const acctBtn = document.getElementById('acctBtn');
   const acctBtnText = document.getElementById('acctBtnText');
   const acctModal = document.getElementById('acctModal');
   const acctMsg = document.getElementById('acctMsg');
-  const stepPhone = document.getElementById('acctStepPhone');
-  const stepOtp = document.getElementById('acctStepOtp');
+  const stepLogin = document.getElementById('acctStepLogin');
   const stepIn = document.getElementById('acctStepIn');
-  const acctSend = document.getElementById('acctSend');
-  const acctVerify = document.getElementById('acctVerify');
+  const acctGoogle = document.getElementById('acctGoogle');
 
   function acctSay(text, ok){ acctMsg.textContent = text || ''; acctMsg.classList.toggle('ok', !!ok); }
   function acctStep(which){
-    stepPhone.classList.toggle('acct-hide', which !== 'phone');
-    stepOtp.classList.toggle('acct-hide', which !== 'otp');
+    stepLogin.classList.toggle('acct-hide', which !== 'login');
     stepIn.classList.toggle('acct-hide', which !== 'in');
   }
+  function whoLabel(u){ return (u && (u.email || u.displayName)) || 'Logged in'; }
   function openAcct(){
     acctSay('');
     if(cloudUser){
-      document.getElementById('acctWho').textContent = cloudUser.phoneNumber || '';
+      document.getElementById('acctWho').textContent = whoLabel(cloudUser);
       acctStep('in');
     } else {
-      acctStep(otpConfirm ? 'otp' : 'phone');
+      acctStep('login');
     }
     acctModal.classList.remove('acct-hide');
   }
@@ -2049,7 +2026,7 @@ window.QB_FOLLOW_DATA = ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wB
   function refreshAcctBtn(){
     if(cloudUser){
       acctBtn.classList.add('in');
-      acctBtnText.textContent = cloudUser.phoneNumber || 'Logged in';
+      acctBtnText.textContent = whoLabel(cloudUser);
     } else {
       acctBtn.classList.remove('in');
       acctBtnText.textContent = 'Login to sync';
@@ -2102,82 +2079,36 @@ window.QB_FOLLOW_DATA = ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wB
     }, err => console.error('history sync', err));
   }
 
-  // a brand-new container every time: reCAPTCHA refuses to render twice in the same element
-  function dropRecaptchaBox(){
-    const old = document.getElementById('recaptchaBox');
-    if(old && old.parentNode) old.parentNode.removeChild(old);
-  }
-  function getRecaptcha(){
-    if(!recaptcha){
-      dropRecaptchaBox();
-      const box = document.createElement('div');
-      box.id = 'recaptchaBox';
-      document.body.appendChild(box);
-      recaptcha = new firebase.auth.RecaptchaVerifier(box, { size:'invisible' });
-    }
-    return recaptcha;
-  }
-  function resetRecaptcha(){
-    try{ if(recaptcha) recaptcha.clear(); }catch(e){}
-    recaptcha = null;
-    dropRecaptchaBox();
-  }
   function authError(e){
     const c = (e && e.code) || '';
     const map = {
-      'auth/invalid-phone-number': 'Phone number thik nei. Country code ar number check korun.',
-      'auth/missing-phone-number': 'Phone number likhun.',
-      'auth/too-many-requests': 'Onek bar try hoyeche. Kichukkhon pore abar chesta korun.',
-      'auth/invalid-verification-code': 'OTP vul. Abar check korun.',
-      'auth/code-expired': 'OTP-er time sesh. Abar OTP pathan.',
-      'auth/captcha-check-failed': 'Captcha fail. Page reload kore abar try korun.',
-      'auth/operation-not-allowed': 'Firebase-e Phone login enable kora nei.',
       'auth/unauthorized-domain': 'Ei website domain Firebase Authorized domains-e add kora nei.',
-      'auth/billing-not-enabled': 'Real number-e SMS pathate Firebase Blaze plan lagbe (test number-e lage na).',
-      'auth/network-request-failed': 'Internet connection check korun.'
+      'auth/operation-not-allowed': 'Firebase-e Google login enable kora nei.',
+      'auth/popup-blocked': 'Popup block hoyeche. Browser-e popup allow kore abar try korun.',
+      'auth/network-request-failed': 'Internet connection check korun.',
+      'auth/web-storage-unsupported': 'Browser-er storage/cookies block kora ache. Allow kore abar try korun.',
+      'auth/account-exists-with-different-credential': 'Ei email-e onno method-e account ache.'
     };
     return map[c] || ('Error: ' + (c || (e && e.message) || 'unknown'));
   }
-  function fullPhone(){
-    let raw = document.getElementById('acctPhone').value.trim();
-    if(raw.startsWith('+')) return '+' + raw.replace(/\D/g, '');
-    const digits = raw.replace(/\D/g, '').replace(/^0+/, '');
-    return document.getElementById('acctCode').value + digits;
-  }
 
-  async function sendOtp(){
+  async function googleLogin(){
     if(!fbAuth){ acctSay('Cloud load hoyni. Internet check kore page reload korun.'); return; }
-    const phone = fullPhone();
-    if(phone.length < 8){ acctSay('Phone number likhun.'); return; }
-    acctSend.disabled = true; acctSay('OTP pathano hochhe…', true);
+    acctGoogle.disabled = true; acctSay('Google login khulchhe…', true);
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt:'select_account' });
     try{
-      otpConfirm = await fbAuth.signInWithPhoneNumber(phone, getRecaptcha());
-      document.getElementById('acctOtpInfo').textContent = phone + '-e 6-digit code pathano hoyeche.';
-      document.getElementById('acctOtp').value = '';
-      acctStep('otp'); acctSay('');
-      setTimeout(() => document.getElementById('acctOtp').focus(), 50);
-    }catch(e){
-      console.error(e);
-      acctSay(authError(e));
-      resetRecaptcha(); otpConfirm = null;
-    }
-    acctSend.disabled = false;
-  }
-  async function verifyOtp(){
-    const code = document.getElementById('acctOtp').value.replace(/\D/g, '');
-    if(code.length !== 6){ acctSay('6-digit OTP likhun.'); return; }
-    if(!otpConfirm){ acctStep('phone'); return; }
-    acctVerify.disabled = true; acctSay('Verify hochhe…', true);
-    try{
-      await otpConfirm.confirm(code);
-      otpConfirm = null; resetRecaptcha();
+      await fbAuth.signInWithPopup(provider);
       acctSay(''); closeAcct();
     }catch(e){
       console.error(e);
-      acctSay(authError(e));
-      if(e && e.code === 'auth/code-expired'){ otpConfirm = null; resetRecaptcha(); }
+      if(e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')){
+        try{ await fbAuth.signInWithRedirect(provider); return; }catch(e2){ e = e2; }
+      }
+      if(e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) acctSay('');
+      else acctSay(authError(e));
     }
-    acctVerify.disabled = false;
+    acctGoogle.disabled = false;
   }
 
   function initCloud(){
@@ -2186,11 +2117,7 @@ window.QB_FOLLOW_DATA = ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wB
     acctBtn.addEventListener('click', openAcct);
     document.getElementById('acctClose').addEventListener('click', closeAcct);
     acctModal.addEventListener('click', e => { if(e.target === acctModal) closeAcct(); });
-    acctSend.addEventListener('click', sendOtp);
-    acctVerify.addEventListener('click', verifyOtp);
-    document.getElementById('acctPhone').addEventListener('keydown', e => { if(e.key === 'Enter') sendOtp(); });
-    document.getElementById('acctOtp').addEventListener('keydown', e => { if(e.key === 'Enter') verifyOtp(); });
-    document.getElementById('acctChange').addEventListener('click', () => { otpConfirm = null; resetRecaptcha(); acctStep('phone'); acctSay(''); });
+    acctGoogle.addEventListener('click', googleLogin);
     document.getElementById('acctLogout').addEventListener('click', () => { if(fbAuth) fbAuth.signOut(); closeAcct(); });
     if(typeof firebase === 'undefined'){ acctBtnText.textContent = 'Login (offline)'; return; }
     try{
